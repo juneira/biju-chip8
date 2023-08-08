@@ -54,11 +54,7 @@ extern int yydebug;
     DEF = 260,
     END = 261,
     MAIN = 262,
-    ASSIGN = 263,
-    SUM = 264,
-    OPEN_PARENT = 265,
-    CLOSE_PARENT = 266,
-    EOL = 267
+    EOL = 263
   };
 #endif
 
@@ -66,12 +62,13 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 40 "biju.y"
+#line 207 "biju.y"
 
-int n;
-char c[50];
+  int n;
+  char c[50];
+  struct ast *a;
 
-#line 75 "biju.tab.h"
+#line 72 "biju.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

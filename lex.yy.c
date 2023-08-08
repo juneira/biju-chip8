@@ -365,9 +365,9 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_accept[27] =
     {   0,
-        0,    0,   13,   11,   10,   10,    7,    8,    6,    9,
-        5,    4,    4,    4,    4,    9,    4,    4,    4,    4,
-        4,    2,    4,    1,    3,    0
+        0,    0,   13,   11,   10,   10,    1,    2,    4,    9,
+        3,    8,    8,    8,    8,    9,    8,    8,    8,    8,
+        8,    6,    8,    5,    7,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
@@ -456,10 +456,9 @@ int yy_flex_debug = 0;
 char *yytext;
 #line 1 "biju.lex"
 #line 4 "biju.lex"
-#include <string.h>
 #include "biju.tab.h"
+#line 461 "lex.yy.c"
 #line 462 "lex.yy.c"
-#line 463 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -676,10 +675,10 @@ YY_DECL
 		}
 
 	{
-#line 8 "biju.lex"
+#line 7 "biju.lex"
 
 
-#line 683 "lex.yy.c"
+#line 682 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -737,44 +736,35 @@ do_action:	/* This label is used only to access EOF actions. */
 			goto yy_find_action;
 
 case 1:
-YY_RULE_SETUP
 #line 10 "biju.lex"
-{ return DEF; }
-	YY_BREAK
 case 2:
-YY_RULE_SETUP
 #line 11 "biju.lex"
-{ return END; }
-	YY_BREAK
 case 3:
-YY_RULE_SETUP
 #line 12 "biju.lex"
-{ return MAIN; }
-	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 13 "biju.lex"
-{ strcpy(yylval.c, yytext); return ID; }
+#line 12 "biju.lex"
+{ return yytext[0]; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
 #line 14 "biju.lex"
-{ return ASSIGN; }
+{ return DEF; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
 #line 15 "biju.lex"
-{ return SUM; }
+{ return END; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
 #line 16 "biju.lex"
-{ return OPEN_PARENT; }
+{ return MAIN; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
 #line 17 "biju.lex"
-{ return CLOSE_PARENT; }
+{ strcpy(yylval.c, yytext); return ID; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
@@ -797,7 +787,7 @@ YY_RULE_SETUP
 #line 22 "biju.lex"
 ECHO;
 	YY_BREAK
-#line 801 "lex.yy.c"
+#line 791 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 

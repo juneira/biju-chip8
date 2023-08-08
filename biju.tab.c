@@ -69,43 +69,210 @@
 #line 1 "biju.y"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-struct id_t {
-  char id[50];
-  int value;
+#define SYMB_TABLE_MAX 50
+#define SYMB_FUNC_TABLE_MAX 50
+
+struct ast {
+  int nodetype;
+  struct ast *l;
+  struct ast *r;
 };
 
-int current_id = 0;
-struct id_t id_table[64];
+struct number {
+  int nodetype; /* K => Constant */
+  int integer;
+};
 
-struct id_t* lookup(char* id_s)
+struct id {
+  int nodetype; /* I => ID */
+  char id_str[50];
+};
+
+struct id* symb_table[SYMB_TABLE_MAX]; /* symbol table */
+struct id* symb_func_table[SYMB_FUNC_TABLE_MAX]; /* symbol function table */
+
+int
+lookup_symb_table(char* id_str)
 {
   int i;
-  for(i = 0; i < current_id; i++) {
-    if(strcmp(id_table[i].id, id_s) == 0) return &id_table[i];
+  for(i = 0; i < SYMB_TABLE_MAX; i++) {
+    if(strcmp(symb_table[i]->id_str, id_str) == 0) return i;
   }
+
+  return -1;
+}
+
+struct ast*
+newast(int nodetype, struct ast *l, struct ast *r)
+{
+  struct ast* a = malloc(sizeof(struct ast));
+
+  if(!a) {
+    printf("out of memory\n");
+    exit(0);
+  }
+
+  a->nodetype = nodetype;
+  a->l = l;
+  a->r = r;
+
+  return a;
+}
+
+struct ast*
+newnumber(int integer)
+{
+  struct number* n = malloc(sizeof(struct number));
+
+  if(!n) {
+    printf("out of memory\n");
+    exit(0);
+  }
+
+  n->nodetype = 'K';
+  n->integer = integer;
+
+  return (struct ast *) n;
+}
+
+struct ast*
+newid(char *id_str, int nodetype)
+{
+  struct id* new_id = malloc(sizeof(struct id));
+
+  if(!new_id) {
+    printf("out of memory\n");
+    exit(0);
+  }
+
+  new_id->nodetype = nodetype;
+
+  strcpy(new_id->id_str, id_str);
+
+  if(nodetype == 'I')
+  {
+    int i;
+    for(i = 0; symb_table[i] != NULL && i < SYMB_TABLE_MAX; i++);
+
+    if(i < SYMB_TABLE_MAX) return (struct ast*) (symb_table[i] = new_id);
+
+    printf("symbol table max reached\n");
+  }
+
+  if(nodetype == 'F')
+  {
+    int i;
+    for(i = 0; symb_func_table[i] != NULL && i < SYMB_FUNC_TABLE_MAX; i++);
+
+    if(i < SYMB_FUNC_TABLE_MAX) return (struct ast*) (symb_func_table[i] = new_id);
+
+    printf("symbol function table max reached\n");
+  }
+
+  printf("nodetype invalid\n");
+  exit(0);
 
   return NULL;
 }
 
-int insert(char* id_s, int value)
+// DEBUG
+// void
+// showtree(struct ast* node)
+// {
+//   printf("%c =>\n", node->nodetype);
+//   if(node->nodetype != 'K' && node->nodetype != 'I' && node->nodetype != 'F') {
+//     printf("%c XXX\n", node->nodetype);
+//     if(node->l != NULL) showtree(node->l);
+//     if(node->r != NULL) showtree(node->r);
+//   }
+// }
+
+void
+compile(struct ast* root)
 {
-  strcpy(&id_table[current_id].id, id_s);
-  printf("id: %s\n", id_table[current_id].id);
-  return id_table[current_id++].value = value;
+  insert_header();
+  compile_ast(root);
+
 }
 
-int assign(char* id_s, int value)
+void
+insert_header()
 {
-  struct id_t* current_id_t = lookup(id_s);
+  printf("JP main\n");
 
-  if(current_id_t == NULL) return insert(id_s, value);
+  insert_print();
 
-  return current_id_t->value = value;
+  printf("main:\n");
 }
 
-#line 109 "biju.tab.c"
+void
+insert_print()
+{
+  printf("print:\n");
+  printf("CLS\n");
+  printf("LD I, #000\n");
+  printf("ADD I, V0\n");
+  printf("ADD I, V0\n");
+  printf("ADD I, V0\n");
+  printf("ADD I, V0\n");
+  printf("ADD I, V0\n");
+  printf("LD V2, 0\n");
+  printf("LD V3, 0\n");
+  printf("DRW V2, V3, #005\n");
+  printf("RET\n");
+}
+
+void compile_ast(struct ast* node)
+{
+  if(node == NULL) return;
+
+  if(node->nodetype == 'o')
+  {
+    compile_ast(node->l);
+    compile_ast(node->r);
+  }
+
+  if(node->nodetype == '=')
+  {
+    int addr = 0xF00 - lookup_symb_table(((struct id*) node->l)->id_str) * 0xFF;
+    int num = ((struct number*) node->r)->integer;
+
+    printf("LD I, #%X\n", addr);
+    printf("LD V0, %d\n", num);
+    printf("LD [I], V0\n");
+  }
+
+  if(node->nodetype == '+')
+  {
+    int addr_a = 0xF00 - lookup_symb_table(((struct id*) node->l)->id_str) * 0xFF;
+    int addr_b = 0xF00 - lookup_symb_table(((struct id*) node->r)->id_str) * 0xFF;
+
+    printf("LD I, #%X\n", addr_a);
+    printf("LD V0, [I]\n");
+    printf("LD V1, V0\n");
+
+    printf("LD I, #%X\n", addr_b);
+    printf("LD V0, [I]\n");
+    printf("LD V2, V0\n");
+
+    printf("LD V0, V1\n");
+    printf("ADD V0, V2\n");
+  }
+
+  if(node->nodetype == 'C')
+  {
+    char* func_s = ((struct id*) node->l)->id_str;
+    compile_ast(node->r);
+
+    printf("CALL %s\n", func_s);
+  }
+}
+
+
+#line 276 "biju.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -158,11 +325,7 @@ extern int yydebug;
     DEF = 260,
     END = 261,
     MAIN = 262,
-    ASSIGN = 263,
-    SUM = 264,
-    OPEN_PARENT = 265,
-    CLOSE_PARENT = 266,
-    EOL = 267
+    EOL = 263
   };
 #endif
 
@@ -170,12 +333,13 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 40 "biju.y"
+#line 207 "biju.y"
 
-int n;
-char c[50];
+  int n;
+  char c[50];
+  struct ast *a;
 
-#line 179 "biju.tab.c"
+#line 343 "biju.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -506,7 +670,7 @@ union yyalloc
 #define YYNSTATES  20
 
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   267
+#define YYMAXUTOK   263
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -522,9 +686,9 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+      10,    11,     2,     9,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     8,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -544,15 +708,15 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     7,     8,     9,    10,    11,    12
+       5,     6,     7,    12
 };
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_int8 yyrline[] =
+static const yytype_uint8 yyrline[] =
 {
-       0,    54,    54,    57,    58,    60,    61,    62,    65,    68,
-      71
+       0,   222,   222,   225,   226,   229,   230,   231,   234,   237,
+     240
 };
 #endif
 
@@ -562,8 +726,8 @@ static const yytype_int8 yyrline[] =
 static const char *const yytname[] =
 {
   "$end", "error", "$undefined", "NUMBER", "ID", "DEF", "END", "MAIN",
-  "ASSIGN", "SUM", "OPEN_PARENT", "CLOSE_PARENT", "EOL", "$accept", "prog",
-  "ops", "op", "assign", "sum", "call_func", YY_NULLPTR
+  "'='", "'+'", "'('", "')'", "EOL", "$accept", "prog", "ops", "op",
+  "assign", "sum", "call_func", YY_NULLPTR
 };
 #endif
 
@@ -572,8 +736,8 @@ static const char *const yytname[] =
    (internal) symbol number NUM (which must be that of a token).  */
 static const yytype_int16 yytoknum[] =
 {
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267
+       0,   256,   257,   258,   259,   260,   261,   262,    61,    43,
+      40,    41,   263
 };
 # endif
 
@@ -1346,31 +1510,43 @@ yyreduce:
   switch (yyn)
     {
   case 2:
-#line 54 "biju.y"
-                       { printf("MAIN\n"); }
-#line 1352 "biju.tab.c"
+#line 222 "biju.y"
+                       { compile((yyvsp[-1].a)); }
+#line 1516 "biju.tab.c"
+    break;
+
+  case 3:
+#line 225 "biju.y"
+     { (yyval.a) = NULL; }
+#line 1522 "biju.tab.c"
+    break;
+
+  case 4:
+#line 226 "biju.y"
+         { (yyval.a) = newast('o', (yyvsp[-1].a), (yyvsp[0].a)); }
+#line 1528 "biju.tab.c"
     break;
 
   case 8:
-#line 65 "biju.y"
-                         { (yyval.n) = assign((yyvsp[-2].c), (yyvsp[0].n)); }
-#line 1358 "biju.tab.c"
+#line 234 "biju.y"
+                      { (yyval.a) = newast('=', newid((yyvsp[-2].c), 'I'), newnumber((yyvsp[0].a))); }
+#line 1534 "biju.tab.c"
     break;
 
   case 9:
-#line 68 "biju.y"
-               { (yyval.n) = lookup((yyvsp[-2].c))->value + lookup((yyvsp[0].c))->value; }
-#line 1364 "biju.tab.c"
+#line 237 "biju.y"
+               { (yyval.a) = newast('+', newid((yyvsp[-2].c), 'I'), newid((yyvsp[0].c), 'I'));  }
+#line 1540 "biju.tab.c"
     break;
 
   case 10:
-#line 71 "biju.y"
-                                          { printf("call %s with %d", (yyvsp[-3].c), (yyvsp[-1].n)); (yyval.n) = (yyvsp[-1].n); }
-#line 1370 "biju.tab.c"
+#line 240 "biju.y"
+                         { (yyval.a) = newast('C', newid((yyvsp[-3].c), 'I'), (yyvsp[-1].a)); }
+#line 1546 "biju.tab.c"
     break;
 
 
-#line 1374 "biju.tab.c"
+#line 1550 "biju.tab.c"
 
       default: break;
     }
@@ -1602,13 +1778,11 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 74 "biju.y"
+#line 243 "biju.y"
 
 
 main(int argc, char **argv)
 {
-  printf(":D\n");
-
   yyparse();
 }
 
